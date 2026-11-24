@@ -151,6 +151,26 @@ frames/        /api/see?save=1 的落盘目录
 - **PhantomProcessKiller**：如果还想更保险，可以用 root 把上限调高（会持久化，需自行评估）：
   `su -c "device_config put activity_manager max_phantom_processes 128"`。本项目已把 fork 行为收敛到 1+1，正常不需要。
 
+## 构建与发布（driver）
+
+Android 驱动源码在 `driver/`（`driver-core` AAR + `driver-app` APK），由 GitHub Actions 构建，
+推送到 `main` 即触发：
+
+| 项 | 说明 |
+| --- | --- |
+| CI | `.github/workflows/build.yml`：JDK 17 + Gradle 8.7，产出 debug APK |
+| 产物出口 | 滚动 release `ci-latest`（公开仓库可匿名下载） |
+| 下载 | `https://github.com/WhiteBaddy/gkd-vision/releases/download/ci-latest/driver-app-debug.apk` |
+| 失败排查 | 构建日志同 release 的 `build.log`（失败时上传） |
+| 安装 | `su -c "pm install -r driver-app-debug.apk"` |
+
+命令行验证：
+
+```bash
+curl -sL -o driver.apk https://github.com/WhiteBaddy/gkd-vision/releases/download/ci-latest/driver-app-debug.apk
+su -c "pm install -r $PWD/driver.apk"
+```
+
 ## 项目文档
 
 按 [研发流程规范](../DEVELOPMENT-WORKFLOW.md) 组织：
