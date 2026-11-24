@@ -1,6 +1,8 @@
 package dev.everything.vision.action
 
 import android.accessibilityservice.AccessibilityService
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.graphics.Rect
@@ -61,12 +63,31 @@ class ActionExecutor(private val service: AccessibilityService) {
         val args = Bundle().apply {
             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
         }
-        val ok = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        var ok = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        node.refresh()
+        var applied = node.text?.toString() == text
+        // WebView 等场景 ACTION_SET_TEXT 常返回 true 但不生效，退化为剪贴板粘贴。
+        if (!applied && text.isNotEmpty()) {
+            ok = pasteInto(node, text) || ok
+            node.refresh()
+            applied = node.text?.toString() == text
+        }
         return JSONObject().apply {
             put("action", "setText")
             put("result", ok)
+            put("applied", applied)
             put("length", text.length)
         }
+    }
+
+    private fun pasteInto(node: AccessibilityNodeInfo, text: String): Boolean {
+        val clipboard = service.getSystemService(ClipboardManager::class.java) ?: return false
+        clipboard.setPrimaryClip(ClipData.newPlainText("vision", text))
+        val rect = Rect().also { node.getBoundsInScreen(it) }
+        node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+        tap(rect.centerX(), rect.centerY(), ViewConfiguration.getTapTimeout().toLong())
+        Thread.sleep(150)
+        return node.performAction(AccessibilityNodeInfo.ACTION_PASTE)
     }
 
     private fun click(node: AccessibilityNodeInfo?, payload: JSONObject): JSONObject {

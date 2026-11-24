@@ -14,6 +14,9 @@ if [ -z "$APK" ]; then
 fi
 
 su -c "pm install -r '$APK'"
+# 重新绑定服务，确保加载的是新安装的代码
+su -c "settings put secure enabled_accessibility_services ''"
+sleep 1
 su -c "settings put secure enabled_accessibility_services $SERVICE"
 su -c "settings put secure accessibility_enabled 1"
 su -c "dumpsys deviceidle whitelist +$PKG" >/dev/null 2>&1 || true
