@@ -65,17 +65,36 @@ class ActionExecutor(private val service: dev.everything.vision.A11yService) {
         }
         var ok = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
         var applied = verifyText(node, text)
-        // WebView 等场景 ACTION_SET_TEXT 常返回 true 但不生效，退化为剪贴板粘贴。
+        var method = "setText"
+        // WebView 等场景 ACTION_SET_TEXT 常返回 true 但不生效：非空退化为粘贴，清空退化为全选剪切。
         if (!applied && text.isNotEmpty()) {
             ok = pasteInto(node, text) || ok
             applied = verifyText(node, text)
+            method = "paste"
+        } else if (!applied && text.isEmpty()) {
+            ok = clearViaSelection(node) || ok
+            applied = verifyText(node, "")
+            method = "cut"
         }
         return JSONObject().apply {
             put("action", "setText")
             put("result", ok)
             put("applied", applied)
+            put("method", method)
             put("length", text.length)
         }
+    }
+
+    private fun clearViaSelection(node: AccessibilityNodeInfo): Boolean {
+        val length = node.text?.length ?: 0
+        if (length == 0) return true
+        val args = Bundle().apply {
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, 0)
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, length)
+        }
+        node.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args)
+        Thread.sleep(120)
+        return node.performAction(AccessibilityNodeInfo.ACTION_CUT)
     }
 
     private fun verifyText(node: AccessibilityNodeInfo, expected: String): Boolean {
