@@ -33,10 +33,10 @@ jobs:
           gh release view ci-latest >/dev/null 2>&1 || \
             gh release create ci-latest --prerelease --title "CI latest" --notes "rolling build artifacts (anonymous download)"
 
-      - name: Assemble debug APK
+      - name: Unit tests + assemble debug APK
         run: |
           set -o pipefail
-          gradle -p driver :driver-app:assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          gradle -p driver :driver-core:testDebugUnitTest :driver-app:assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
 
       - name: Upload APK to rolling release
         if: success()
