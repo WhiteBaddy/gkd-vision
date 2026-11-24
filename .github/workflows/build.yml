@@ -44,6 +44,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload ci-latest driver/driver-app/build/outputs/apk/debug/*.apk --clobber
 
+      - name: Stamp build log
+        if: always()
+        run: |
+          echo "commit=${GITHUB_SHA}" >> build.log
+          echo "status=${{ job.status }}" >> build.log
+
       - name: Upload build log
         if: always()
         env:
