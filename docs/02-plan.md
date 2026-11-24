@@ -241,6 +241,10 @@ adb shell am force-stop dev.everything.vision; sleep 12; curl -s .../api/state
 | ISSUE-010 | 个别 ROM 脚本启用无障碍失败 | S2 | 部署失败 | **S3 检测** / v1.1 引导 | 计划 |
 | ISSUE-011 | selector-lite 不支持关系运算符 | S2 | 语义受限 | v1.1 | 计划 |
 | ISSUE-012 | 多设备并发/远程 | S3 | 能力缺失 | 下一版本 | 计划 |
+| ISSUE-013 | `activityId` 为空（缺窗口事件） | S1 | FR-08 不完整 | **S2** | 待处理 |
+| ISSUE-014 | 进程 RSS 179MB 超 NFR-06 目标 | S1 | 资源占用 | **S3**（优化+修订指标） | 待处理 |
+| ISSUE-015 | 抓帧 390–690ms 未达 NFR-01 | S1 | 延迟 | **S2 按需截图** / S3 | 待处理 |
+| ISSUE-016 | oracle 对比未执行（GKD 未开启） | S1 | 质量基线 | 开发期随时 | 待处理 |
 
 ## 7. 人日拆解（按工作类型）
 
