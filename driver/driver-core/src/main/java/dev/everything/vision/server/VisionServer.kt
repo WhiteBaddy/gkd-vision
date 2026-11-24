@@ -135,7 +135,7 @@ class VisionServer(
     }
 
     private fun captureSnapshot(): JSONObject {
-        val root = service.rootInActiveWindow
+        val root = service.activeRoot()
             ?: return errorObject("NODES_UNAVAILABLE", "无法读取当前窗口节点")
         val nodes = builder.build(AndroidNodeSource(root, 0))
         val (width, height) = Env.screenSize(service)

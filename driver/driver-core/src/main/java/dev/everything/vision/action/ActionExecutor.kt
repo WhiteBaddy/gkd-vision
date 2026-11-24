@@ -18,13 +18,13 @@ import kotlin.math.roundToInt
 import org.json.JSONObject
 
 /** 把 GKD 形状的 execSelector 负载映射为无障碍动作。 */
-class ActionExecutor(private val service: AccessibilityService) {
+class ActionExecutor(private val service: dev.everything.vision.A11yService) {
 
     fun exec(payload: JSONObject): JSONObject {
         val selectorSource = payload.optString("selector", "")
         val action = payload.optString("action", "")
         val selector = if (selectorSource.isBlank()) null else LiteSelector.parse(selectorSource)
-        val root = service.rootInActiveWindow ?: throw IllegalStateException("无法读取当前窗口")
+        val root = service.activeRoot() ?: throw IllegalStateException("无法读取当前窗口")
         val node = selector?.let { NodeMatcher.findFirst(root, it) }
 
         if (action.isEmpty() || action == "none") {
@@ -51,7 +51,7 @@ class ActionExecutor(private val service: AccessibilityService) {
     fun setText(payload: JSONObject): JSONObject {
         val selectorSource = payload.optString("selector", "")
         val selector = if (selectorSource.isBlank()) null else LiteSelector.parse(selectorSource)
-        val root = service.rootInActiveWindow ?: throw IllegalStateException("无法读取当前窗口")
+        val root = service.activeRoot() ?: throw IllegalStateException("无法读取当前窗口")
         val node = if (selector != null) {
             NodeMatcher.findFirst(root, selector) ?: throw IllegalStateException("未找到匹配节点")
         } else {
@@ -64,13 +64,11 @@ class ActionExecutor(private val service: AccessibilityService) {
             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
         }
         var ok = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-        node.refresh()
-        var applied = node.text?.toString() == text
+        var applied = verifyText(node, text)
         // WebView 等场景 ACTION_SET_TEXT 常返回 true 但不生效，退化为剪贴板粘贴。
         if (!applied && text.isNotEmpty()) {
             ok = pasteInto(node, text) || ok
-            node.refresh()
-            applied = node.text?.toString() == text
+            applied = verifyText(node, text)
         }
         return JSONObject().apply {
             put("action", "setText")
@@ -78,6 +76,15 @@ class ActionExecutor(private val service: AccessibilityService) {
             put("applied", applied)
             put("length", text.length)
         }
+    }
+
+    private fun verifyText(node: AccessibilityNodeInfo, expected: String): Boolean {
+        repeat(3) {
+            node.refresh()
+            if (node.text?.toString() == expected) return true
+            Thread.sleep(120)
+        }
+        return false
     }
 
     private fun pasteInto(node: AccessibilityNodeInfo, text: String): Boolean {

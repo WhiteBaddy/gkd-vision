@@ -46,6 +46,12 @@ class A11yService : AccessibilityService() {
 
     fun isConnected(): Boolean = instance === this
 
+    /** 多窗口/分屏时优先取活跃窗口的根节点。 */
+    fun activeRoot(): android.view.accessibility.AccessibilityNodeInfo? {
+        val active = windows?.firstOrNull { it.isActive }?.root
+        return active ?: rootInActiveWindow
+    }
+
     companion object {
         @Volatile
         var instance: A11yService? = null
