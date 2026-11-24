@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_description">提供屏幕快照与基础操作能力（仅供本机授权工具调用）</string>
+</resources>
