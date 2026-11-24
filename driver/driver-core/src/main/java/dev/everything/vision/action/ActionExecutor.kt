@@ -12,6 +12,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.roundToInt
 import org.json.JSONObject
 
 /** 把 GKD 形状的 execSelector 负载映射为无障碍动作。 */
@@ -106,8 +107,8 @@ class ActionExecutor(private val service: AccessibilityService) {
         val end = pointFromObject(node, endObj) ?: throw IllegalArgumentException("swipeArg.end 非法")
         val duration = arg.optLong("duration", 300L).coerceIn(50L, 5000L)
         val path = Path().apply {
-            moveTo(start.first, start.second)
-            lineTo(end.first, end.second)
+            moveTo(start.first.toFloat(), start.second.toFloat())
+            lineTo(end.first.toFloat(), end.second.toFloat())
         }
         val ok = gesture(path, duration)
         return JSONObject().apply {
@@ -146,7 +147,7 @@ class ActionExecutor(private val service: AccessibilityService) {
     private fun pointFromObject(node: AccessibilityNodeInfo?, obj: JSONObject): Pair<Int, Int>? {
         val x = number(obj, "x")
         val y = number(obj, "y")
-        val rect = node?.let { Rect().also { n -> n.getBoundsInScreen(it) } }
+        val rect = node?.let { n -> Rect().also { r -> n.getBoundsInScreen(r) } }
         val px = when {
             x != null -> x
             rect != null && number(obj, "left") != null -> rect.left + number(obj, "left")!!
