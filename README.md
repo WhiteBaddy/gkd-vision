@@ -189,5 +189,9 @@ bash tools/it.sh --soak 120   # 额外 2 分钟 soak（RSS/fd）
 | [docs/00-feasibility.md](docs/00-feasibility.md) | Stage 0：需求候选（RC）、可行性判定、风险、范围草案、已裁决的 Q-01~Q-03 |
 | [docs/01-requirements.md](docs/01-requirements.md) | Stage 1：FR/NFR/UC、难点分析、需求锁定、技术栈 ADR、接口契约 |
 | [docs/02-plan.md](docs/02-plan.md) | Stage 2：3 个阶段（S1/S2/S3）× 5–7 人日、任务清单、里程碑、遗留问题登记 |
+| [docs/03-stage-01-driver-core.md](docs/03-stage-01-driver-core.md) | S1 开发文档：快照/截图/最小 HTTP |
+| [docs/03-stage-02-control.md](docs/03-stage-02-control.md) | S2 开发文档：手势/选择器/文本/部署 |
+| [docs/03-stage-03-integration.md](docs/03-stage-03-integration.md) | S3 开发文档：接入/回退/保活/soak |
+| [docs/05-integration-test.md](docs/05-integration-test.md) | 集成测试总结（v1.0.0-rc） |
 | [docs/approach.md](docs/approach.md) | 可行性附件：协议依据、性能实测、事故复盘、路线对比 |
 | [docs/driver-selection.md](docs/driver-selection.md) | 选型附件：自研无障碍 App / app_process / GKD 的对比与工作量 |
