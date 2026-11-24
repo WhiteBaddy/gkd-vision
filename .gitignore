@@ -1,0 +1,13 @@
+# 第三方参考仓库（自行 clone）
+inspect/
+
+# 运行时产物
+frames/
+node_modules/
+*.log
+.local/
+
+# 系统/编辑器
+.DS_Store
+*.swp
+.idea/

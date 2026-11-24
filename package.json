@@ -1,0 +1,16 @@
+{
+  "name": "gkd-vision",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Real-time see & control bridge for the GKD on-device HTTP inspection server (protocol of gkd-kit/inspect)",
+  "scripts": {
+    "start": "node server.mjs --driver root",
+    "start:gkd": "node server.mjs --driver gkd",
+    "mock": "node server.mjs --driver mock",
+    "check": "node --check server.mjs && node --check src/vision.mjs && node --check src/gkd.mjs && node --check src/root.mjs && node --check src/ws.mjs && node --check src/mock.mjs && node --check public/app.js && node tools/ui-smoke.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

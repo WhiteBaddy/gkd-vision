@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GKD Vision · 实时屏幕</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="logo">◉</span>
+          <div>
+            <div class="title">GKD Vision</div>
+            <div class="subtitle" id="device-line">未连接</div>
+          </div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><label>FPS</label><b id="m-fps">–</b></div>
+          <div class="metric"><label>帧耗时</label><b id="m-cost">–</b></div>
+          <div class="metric"><label>节点</label><b id="m-nodes">–</b></div>
+          <div class="metric"><label>画面</label><b id="m-size">–</b></div>
+        </div>
+        <div class="controls">
+          <button id="btn-pause" class="btn">暂停</button>
+          <select id="sel-interval" class="select" title="刷新间隔">
+            <option value="250">250ms</option>
+            <option value="500">500ms</option>
+            <option value="800" selected>800ms</option>
+            <option value="1200">1.2s</option>
+            <option value="2000">2s</option>
+          </select>
+          <label class="switch"><input type="checkbox" id="chk-overlay" checked /> 节点框</label>
+          <label class="switch"><input type="checkbox" id="chk-cleanup" checked /> 清理快照</label>
+          <span id="status-dot" class="dot"></span>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="stage">
+          <div class="stage-toolbar">
+            <div class="modes" role="tablist">
+              <button class="mode active" data-mode="inspect">观察</button>
+              <button class="mode" data-mode="tap">点击</button>
+              <button class="mode" data-mode="longpress">长按</button>
+              <button class="mode" data-mode="swipe">滑动</button>
+            </div>
+            <div class="stage-actions">
+              <button class="btn ghost" id="btn-back">返回</button>
+              <button class="btn ghost" id="btn-home">桌面</button>
+              <button class="btn ghost" id="btn-fit">适应</button>
+              <button class="btn ghost" id="btn-zoom-in">＋</button>
+              <button class="btn ghost" id="btn-zoom-out">－</button>
+            </div>
+          </div>
+          <div class="canvas-wrap" id="canvas-wrap">
+            <canvas id="screen"></canvas>
+            <div class="empty" id="empty">等待第一帧…<small id="empty-hint">检查 GKD 的 HTTP 调试服务是否已开启</small></div>
+            <div class="badge" id="frame-badge">--</div>
+          </div>
+          <div class="stage-footer">
+            <span id="cursor-pos">--</span>
+            <span id="selected-info">未选中节点</span>
+          </div>
+        </section>
+
+        <aside class="side">
+          <div class="tabs">
+            <button class="tab active" data-tab="tree">节点树</button>
+            <button class="tab" data-tab="selector">选择器</button>
+            <button class="tab" data-tab="log">动作</button>
+          </div>
+
+          <div class="panel active" id="panel-tree">
+            <input id="tree-search" class="input" placeholder="搜索 text / desc / vid / class" />
+            <div class="tree" id="tree"></div>
+          </div>
+
+          <div class="panel" id="panel-selector">
+            <textarea id="sel-input" class="textarea" spellcheck="false" placeholder='选择器，例如 [text="无线局域网"] 或 [vid="row_0"]'>[vid="row_0"]</textarea>
+            <div class="row">
+              <select id="sel-action" class="select">
+                <option value="">仅查询</option>
+                <option value="click">click</option>
+                <option value="clickNode">clickNode</option>
+                <option value="clickCenter" selected>clickCenter</option>
+                <option value="longClick">longClick</option>
+                <option value="longClickCenter">longClickCenter</option>
+                <option value="back">back</option>
+              </select>
+              <label class="switch"><input type="checkbox" id="chk-fast" /> fastQuery</label>
+              <button class="btn" id="btn-exec">执行</button>
+            </div>
+            <div class="hint">position / swipeArg 可直接贴在下方 JSON 中，会原样发给 GKD。</div>
+            <textarea id="sel-extra" class="textarea small" spellcheck="false" placeholder='{"position":{"x":"540","y":"900"}}'></textarea>
+            <pre class="result" id="sel-result">// 结果</pre>
+          </div>
+
+          <div class="panel" id="panel-log">
+            <div class="log" id="log"></div>
+          </div>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
