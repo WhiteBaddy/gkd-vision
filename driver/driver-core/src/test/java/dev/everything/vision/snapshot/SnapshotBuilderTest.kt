@@ -46,7 +46,10 @@ class SnapshotBuilderTest {
         assertEquals(listOf(0, 1, 2, 3), nodes.map { it.id })
         assertEquals(listOf(-1, 0, 0, 2), nodes.map { it.pid })
         assertEquals(listOf(0, 1, 1, 2), nodes.map { it.attr.depth })
-        assertEquals(listOf(0, 1, 2, 3), nodes.map { it.attr.index }.sorted())
+        assertEquals(0, nodes[0].attr.index)
+        assertEquals(0, nodes[1].attr.index)
+        assertEquals(1, nodes[2].attr.index)
+        assertEquals(0, nodes[3].attr.index)
     }
 
     @Test
