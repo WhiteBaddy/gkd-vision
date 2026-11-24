@@ -1,6 +1,7 @@
 package dev.everything.vision
 
 import android.accessibilityservice.AccessibilityService
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import dev.everything.vision.server.VisionServer
 
@@ -24,6 +25,7 @@ class A11yService : AccessibilityService() {
         instance = this
         server?.stop()
         server = VisionServer(this).also { it.start() }
+        Log.i("VisionDriver", "service connected, http server starting on 127.0.0.1:8888")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {

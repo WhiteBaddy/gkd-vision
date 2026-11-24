@@ -10,6 +10,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
+import android.util.Log
 import java.util.concurrent.atomic.AtomicInteger
 import org.json.JSONObject
 
@@ -77,6 +78,7 @@ class VisionServer(
             }
         } catch (t: Throwable) {
             lastError = "bind failed: ${t.message}"
+            Log.e("VisionDriver", "http server failed", t)
         }
     }
 
