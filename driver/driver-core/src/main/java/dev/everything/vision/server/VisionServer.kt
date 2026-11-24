@@ -40,6 +40,10 @@ class VisionServer(
     var lastError: String? = null
         private set
 
+    @Volatile
+    var isRunning: Boolean = false
+        private set
+
     fun start() {
         if (running) return
         running = true
@@ -51,6 +55,7 @@ class VisionServer(
 
     fun stop() {
         running = false
+        isRunning = false
         try {
             serverSocket?.close()
         } catch (_: Throwable) {
@@ -65,6 +70,7 @@ class VisionServer(
             socket.reuseAddress = true
             socket.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), port))
             serverSocket = socket
+            isRunning = true
             while (running) {
                 val client =
                     try {
@@ -110,6 +116,8 @@ class VisionServer(
         "/api/getScreenshot" -> screenshotResponse(request.body)
         "/api/execSelector" -> json(actions.exec(parseBody(request.body)))
         "/api/text" -> json(actions.setText(parseBody(request.body)))
+        "/api/deleteSnapshot" -> json(JSONObject().put("message", "success"))
+        "/api/getSnapshots" -> json(org.json.JSONArray())
         else -> HttpResponse(
             status = 404,
             body = errorBody("NOT_FOUND", "unknown path ${request.path}"),
@@ -127,6 +135,7 @@ class VisionServer(
         put("screenshotCache", synchronized(screenshots) { screenshots.size })
         put("lastPackage", service.lastPackage ?: JSONObject.NULL)
         put("lastClass", service.lastClass ?: JSONObject.NULL)
+        put("imeVisible", service.isImeVisible())
     }
 
     private fun serverInfoJson(): JSONObject = JSONObject().apply {
