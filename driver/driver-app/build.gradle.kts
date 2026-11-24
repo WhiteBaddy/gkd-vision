@@ -15,9 +15,23 @@ android {
         versionName = "0.1.0-alpha"
     }
 
+    signingConfigs {
+        create("dev") {
+            storeFile = rootProject.file("keystore/vision-debug.p12")
+            storePassword = "visiondebug"
+            keyAlias = "vision"
+            keyPassword = "visiondebug"
+            storeType = "PKCS12"
+        }
+    }
+
     buildTypes {
-        release {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("dev")
+        }
+        getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("dev")
         }
     }
 
