@@ -11,9 +11,10 @@ data class LiteSelector(
     val vid: String? = null,
     val viewId: String? = null,
     val clickable: Boolean? = null,
+    val editable: Boolean? = null,
 ) {
     val isEmpty: Boolean
-        get() = text == null && desc == null && vid == null && viewId == null && clickable == null
+        get() = text == null && desc == null && vid == null && viewId == null && clickable == null && editable == null
 
     companion object {
         private val PART = Regex("""\[(\w+)(?:\s*=\s*(?:"([^"]*)"|(true|false)))?]""")
@@ -27,6 +28,7 @@ data class LiteSelector(
             var vid: String? = null
             var viewId: String? = null
             var clickable: Boolean? = null
+            var editable: Boolean? = null
             var matched = 0
             for (match in PART.findAll(trimmed)) {
                 require(match.range.first == index || trimmed.substring(index, match.range.first).isBlank()) {
@@ -46,11 +48,12 @@ data class LiteSelector(
                     "vid" -> vid = value
                     "id" -> viewId = value
                     "clickable" -> clickable = bool.toBooleanStrictOrNull() ?: false
+                    "editable" -> editable = bool.toBooleanStrictOrNull() ?: false
                     else -> throw IllegalArgumentException("不支持的属性: $key")
                 }
             }
             require(matched > 0 && index == trimmed.length) { "无法解析选择器: $source" }
-            return LiteSelector(text, desc, vid, viewId, clickable)
+            return LiteSelector(text, desc, vid, viewId, clickable, editable)
         }
     }
 }

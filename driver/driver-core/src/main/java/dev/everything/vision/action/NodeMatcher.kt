@@ -50,6 +50,7 @@ object NodeMatcher {
             if (id == null || pkg == null || !id.startsWith("$pkg:id/") || id.substringAfter(":id/") != it) return false
         }
         selector.clickable?.let { if (node.isClickable != it) return false }
+        selector.editable?.let { if (node.isEditable != it) return false }
         return true
     }
 }
