@@ -1,6 +1,7 @@
 package dev.everything.vision.server
 
 import dev.everything.vision.A11yService
+import dev.everything.vision.action.ActionExecutor
 import dev.everything.vision.json.SnapshotJson
 import dev.everything.vision.model.ScreenshotStatus
 import dev.everything.vision.model.Snapshot
@@ -23,6 +24,7 @@ class VisionServer(
     private val port: Int = DEFAULT_PORT,
 ) {
     private val builder = SnapshotBuilder()
+    private val actions = ActionExecutor(service)
     private val sequence = AtomicInteger(0)
     private val screenshots = object : LinkedHashMap<Int, ByteArray>(4, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, ByteArray>): Boolean = size > 4
@@ -92,7 +94,7 @@ class VisionServer(
         val response = try {
             route(request)
         } catch (t: Throwable) {
-            errorResponse("INTERNAL_ERROR", t.message ?: t.javaClass.simpleName)
+            errorResponseFor(t)
         }
         try {
             writeResponse(client.getOutputStream(), response)
@@ -106,6 +108,8 @@ class VisionServer(
         "/api/getServerInfo" -> json(serverInfoJson())
         "/api/captureSnapshot" -> json(captureSnapshot())
         "/api/getScreenshot" -> screenshotResponse(request.body)
+        "/api/execSelector" -> json(actions.exec(parseBody(request.body)))
+        "/api/text" -> json(actions.setText(parseBody(request.body)))
         else -> HttpResponse(
             status = 404,
             body = errorBody("NOT_FOUND", "unknown path ${request.path}"),
@@ -170,6 +174,23 @@ class VisionServer(
         val bytes = synchronized(screenshots) { screenshots[id] }
             ?: return errorResponse("SNAPSHOT_NOT_FOUND", "没有该快照的截图: $id")
         return HttpResponse(contentType = "image/webp", body = bytes)
+    }
+
+    private fun parseBody(body: ByteArray): JSONObject =
+        try {
+            JSONObject(String(body, Charsets.UTF_8).ifBlank { "{}" })
+        } catch (t: Throwable) {
+            throw IllegalArgumentException("请求体不是合法 JSON: ${t.message}")
+        }
+
+    private fun errorResponseFor(t: Throwable): HttpResponse {
+        val code = when (t) {
+            is IllegalArgumentException -> "INVALID_ARGUMENT"
+            is IllegalStateException -> "NODE_NOT_FOUND"
+            is SecurityException -> "PERMISSION_DENIED"
+            else -> "INTERNAL_ERROR"
+        }
+        return errorResponse(code, t.message ?: code)
     }
 
     private fun json(obj: JSONObject): HttpResponse =
