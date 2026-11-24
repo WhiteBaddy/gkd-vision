@@ -187,6 +187,6 @@ class VisionServer(
         HttpResponse(body = errorBody(code, message), rpcStatus = "error")
 
     companion object {
-        const val DEFAULT_PORT = 8888
+        const val DEFAULT_PORT = 8899
     }
 }

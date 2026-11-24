@@ -25,7 +25,7 @@ class A11yService : AccessibilityService() {
         instance = this
         server?.stop()
         server = VisionServer(this).also { it.start() }
-        Log.i("VisionDriver", "service connected, http server starting on 127.0.0.1:8888")
+        Log.i("VisionDriver", "service connected, http server starting on 127.0.0.1:8899")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
