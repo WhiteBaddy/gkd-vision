@@ -36,22 +36,65 @@ for (let i = 0; i < argv.length; i++) {
 const PORT = Number(args.get('port') ?? 7777);
 const HOST = args.get('host') ?? '127.0.0.1';
 const GKD = args.get('gkd') ?? 'http://127.0.0.1:8888';
-const DRIVER = (args.get('driver') ?? (args.get('mock') === 'true' ? 'mock' : 'gkd')).toLowerCase();
+const A11Y = args.get('a11y') ?? 'http://127.0.0.1:8899';
+const DRIVER = (args.get('driver') ?? (args.get('mock') === 'true' ? 'mock' : 'auto')).toLowerCase();
 const MOCK = DRIVER === 'mock';
 const INTERVAL = Number(args.get('interval') ?? (MOCK ? 700 : 900));
 
-const device =
-  DRIVER === 'mock'
-    ? new MockGkd()
-    : DRIVER === 'root'
-      ? new RootDriver({
-          stream: args.get('stream') !== 'false',
-          fps: Number(args.get('fps') ?? 10),
-          bitrate: args.get('bitrate') ?? '3M',
-          recordLimit: Number(args.get('record-limit') ?? 180),
-          forceStream: args.get('force-stream') === 'true',
-        })
-      : new GkdClient(GKD);
+function makeRoot() {
+  return new RootDriver({
+    stream: args.get('stream') !== 'false',
+    fps: Number(args.get('fps') ?? 10),
+    bitrate: args.get('bitrate') ?? '3M',
+    recordLimit: Number(args.get('record-limit') ?? 180),
+    forceStream: args.get('force-stream') === 'true',
+  });
+}
+
+async function reachable(url) {
+  try {
+    const response = await fetch(`${url}/api/state`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+      signal: AbortSignal.timeout(1500),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function hasRoot() {
+  return new Promise((resolve) => {
+    execFile('su', ['-c', 'id'], { timeout: 3000 }, (error, stdout) => {
+      resolve(!error && String(stdout).includes('uid=0'));
+    });
+  });
+}
+
+async function pickDevice() {
+  if (DRIVER === 'mock') return new MockGkd();
+  if (DRIVER === 'root') return makeRoot();
+  if (DRIVER === 'a11y') return new GkdClient(A11Y);
+  if (DRIVER === 'gkd') return new GkdClient(GKD);
+  // auto: a11y → root → gkd
+  if (await reachable(A11Y)) {
+    console.log(`[driver] auto → a11y (${A11Y})`);
+    return new GkdClient(A11Y);
+  }
+  if (await hasRoot()) {
+    console.log('[driver] auto → root');
+    return makeRoot();
+  }
+  if (await reachable(GKD)) {
+    console.log(`[driver] auto → gkd (${GKD})`);
+    return new GkdClient(GKD);
+  }
+  throw new Error('没有可用驱动：a11y 不可达、无 root、GKD 未开启');
+}
+
+const device = await pickDevice();
 const vision = new Vision({ device, interval: INTERVAL, cleanup: true });
 const peers = new Set();
 let lastTreeAt = 0;
@@ -182,7 +225,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && path === '/api/state') {
       return json(res, 200, {
         driver: DRIVER,
-        device: DRIVER === 'gkd' ? GKD : DRIVER,
+        device: DRIVER === 'gkd' ? GKD : DRIVER === 'a11y' ? A11Y : DRIVER,
         state: vision.state,
         warnings: device.warnings ?? [],
       });
@@ -452,7 +495,16 @@ function renderTextTree(nodes) {
 
 await mkdir(FRAMES, { recursive: true });
 server.listen(PORT, HOST, () => {
-  const label = DRIVER === 'mock' ? 'mock device' : DRIVER === 'root' ? 'root (screenrecord+ffmpeg | input)' : `GKD @ ${GKD}`;
+  const label =
+    DRIVER === 'mock'
+      ? 'mock device'
+      : DRIVER === 'root'
+        ? 'root (screenrecord+ffmpeg | input)'
+        : DRIVER === 'a11y'
+          ? `a11y @ ${A11Y}`
+          : DRIVER === 'gkd'
+            ? `GKD @ ${GKD}`
+            : 'auto';
   console.log(`gkd-vision listening on http://${HOST}:${PORT}  (${label})`);
   console.log(`  live UI   http://${HOST}:${PORT}/`);
   console.log(`  see       curl -s "http://${HOST}:${PORT}/api/see?save=1"`);

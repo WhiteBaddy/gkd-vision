@@ -117,7 +117,7 @@ class VisionServer(
         "/api/execSelector" -> json(actions.exec(parseBody(request.body)))
         "/api/text" -> json(actions.setText(parseBody(request.body)))
         "/api/deleteSnapshot" -> json(JSONObject().put("message", "success"))
-        "/api/getSnapshots" -> json(org.json.JSONArray())
+        "/api/getSnapshots" -> HttpResponse(body = org.json.JSONArray().toString().toByteArray(Charsets.UTF_8))
         else -> HttpResponse(
             status = 404,
             body = errorBody("NOT_FOUND", "unknown path ${request.path}"),
