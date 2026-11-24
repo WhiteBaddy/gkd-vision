@@ -1,16 +1,21 @@
 # gkd-vision
 
 **实时看见 + 操控手机屏幕**的桥接服务：一个跑在 Termux 里的 Node 进程 + 一个网页镜像。
-接口设计沿用 [`gkd-kit/inspect`](https://github.com/gkd-kit/inspect) 的「控件树 + 绝对坐标手势」模型，提供两种驱动：
+接口设计沿用 [`gkd-kit/inspect`](https://github.com/gkd-kit/inspect) 的「控件树 + 绝对坐标手势」模型，提供四种驱动（外加 `auto` 探测）：
 
 | 驱动 | 「眼」 | 「手」 | 需要什么 |
 | --- | --- | --- | --- |
-| `root`（本机默认推荐） | `screenrecord \| ffmpeg` 实时 H.264 → JPEG 帧 | `input tap/swipe/text/keyevent` | root |
-| `gkd` | GKD 无障碍截图（WebP）+ 控件树 | `execSelector`（坐标/节点/滑动/返回） | GKD App + 打开其 HTTP 调试服务 |
+| `a11y`（推荐） | 自研无障碍服务：`takeScreenshot` → WebP + 控件树 | `dispatchGesture` / `ACTION_SET_TEXT` / `performGlobalAction` | 安装 driver APK + 启用无障碍 |
+| `root` | `screenrecord \| ffmpeg` 实时 H.264 → JPEG 帧 | `input tap/swipe/text/keyevent` | root |
+| `gkd` | GKD 无障碍截图（WebP）+ 控件树 | `execSelector` | GKD App + 打开其 HTTP 调试服务 |
+| `auto` | 按 `a11y → root → gkd` 顺序探测 | 随命中的驱动 | 至少一种可用 |
 | `mock` | 合成 SVG 画面 | 内存里模拟点击 | 无 |
+
+端口：自研驱动 **8899**（可与 GKD 的 8888 并存，便于对照）。
 
 ```text
 ┌── 手机 ───────────────────────────────────────────────┐
+│ a11y 驱动:  自研无障碍服务 截图+控件树+手势  ⇄  :8899   │
 │ root 驱动:  screenrecord ─▶ ffmpeg ─▶ JPEG 帧          │
 │              input tap/swipe/text ◀── 指令              │
 │ gkd  驱动:  GKD a11y 截图 + 控件树  ⇄  HTTP :8888       │
@@ -48,6 +53,8 @@ bash tools/storm-test.sh real 20 4   # 真录屏 20s、4s 一切片，验证同�
 ## 快速开始
 
 ```bash
+node server.mjs --driver a11y            # 自研无障碍驱动（127.0.0.1:8899）
+node server.mjs --driver auto            # 自动探测 a11y → root → gkd
 node server.mjs --driver root            # 本机 root：实时流 + input 注入（默认 10fps）
 node server.mjs --driver root --fps 15 --bitrate 5M
 node server.mjs --driver root --stream=false   # 退化为 screencap 单张抓帧（约 1.5fps）
@@ -167,8 +174,9 @@ Android 驱动源码在 `driver/`（`driver-core` AAR + `driver-app` APK），�
 命令行验证：
 
 ```bash
-curl -sL -o driver.apk https://github.com/WhiteBaddy/gkd-vision/releases/download/ci-latest/driver-app-debug.apk
-su -c "pm install -r $PWD/driver.apk"
+bash tools/deploy.sh          # 安装 + 启用无障碍 + 电池白名单 + 健康检查（幂等）
+bash tools/it.sh              # 集成测试（协议/回退/部署幂等/恢复）
+bash tools/it.sh --soak 120   # 额外 2 分钟 soak（RSS/fd）
 ```
 
 ## 项目文档
