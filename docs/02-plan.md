@@ -233,7 +233,7 @@ adb shell am force-stop dev.everything.vision; sleep 12; curl -s .../api/state
 | ISSUE-002 | 部分输入法下中文/emoji 输入失败 | 01 D-05 | 输入不可用 | v1.1 | 计划 |
 | ISSUE-003 | WebView/Compose 树稀疏 | 01 D-04 | 定位失败 | v1.1 | 计划 |
 | ISSUE-004 | 非 root 引导体验粗糙 | 01 FR-12 | 配置步骤多 | v1.1 | 计划 |
-| ISSUE-005 | 多窗口/分屏选择策略 | 01 D-07 | 抓错窗口 | **S2** | 计划 |
+| ISSUE-005 | 多窗口/分屏选择策略 | 01 D-07 | 抓错窗口 | **S2** | 已闭环（activeRoot） |
 | ISSUE-006 | 与 GKD 字段差异 | 01 D-03 | 解析失败 | **S1 基线 / S2 契约测试** | 计划 |
 | ISSUE-007 | 嵌入形态未验证 | ADR-06 | 单包不可用 | v1.1 | 计划 |
 | ISSUE-008 | WebView/Compose 抽样基线不足 | S1 | 覆盖率未知 | v1.1 | 计划 |
@@ -245,6 +245,8 @@ adb shell am force-stop dev.everything.vision; sleep 12; curl -s .../api/state
 | ISSUE-014 | 进程 RSS 179MB 超 NFR-06 目标 | S1 | 资源占用 | **S3**（优化+修订指标） | 待处理 |
 | ISSUE-015 | 抓帧 390–690ms 未达 NFR-01 | S1 | 延迟 | **S2 按需截图** / S3 | 待处理 |
 | ISSUE-016 | oracle 对比未执行（GKD 未开启） | S1 | 质量基线 | 开发期随时 | 待处理 |
+| ISSUE-017 | 清空 WebView 输入框后节点文本为 `\n` | S2 | 体验细节 | v1.1 | 待处理 |
+| ISSUE-018 | `back` 在键盘收起后继续触发页面返回 | S2 | 误操作 | **S3**（检测 IME 窗口） | 待处理 |
 
 ## 7. 人日拆解（按工作类型）
 
