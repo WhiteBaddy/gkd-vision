@@ -201,5 +201,6 @@ bash tools/it.sh --soak 120   # 额外 2 分钟 soak（RSS/fd）
 | [docs/v1.1/03-stage-02-vision-locate.md](docs/v1.1/03-stage-02-vision-locate.md) | S2：视觉模板定位 |
 | [docs/v1.1/03-stage-03-integration.md](docs/v1.1/03-stage-03-integration.md) | S3：集成与真实任务复测 |
 | [docs/v1.1/05-integration-test.md](docs/v1.1/05-integration-test.md) | v1.1 集成测试总结 |
+| [docs/07-wechat-a11y-options.md](docs/07-wechat-a11y-options.md) | 微信控件树门控：实验、方案对比（白名单/共启/OCR/通道） |
 | [docs/approach.md](docs/approach.md) | 可行性附件：协议依据、性能实测、事故复盘、路线对比 |
 | [docs/driver-selection.md](docs/driver-selection.md) | 选型附件：自研无障碍 App / app_process / GKD 的对比与工作量 |
