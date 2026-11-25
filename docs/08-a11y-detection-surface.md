@@ -87,9 +87,9 @@ Registered clients:{ [com.tencent.mm] ... [dev.everything.vision] ... }
 
 | ID | 描述 | 预期 |
 | --- | --- | --- |
-| ISSUE-038 | 本地 HTTP 无鉴权，任何应用可调用 | v1.2（P0） |
-| ISSUE-039 | 未验证 a11y 注入手势的事件特征 | v1.2（EXP-01） |
-| ISSUE-040 | 服务未限定 `packageNames`，暴露全设备监视信号 | v1.2（P1） |
+| ISSUE-038 | 本地 HTTP 无鉴权，任何应用可调用 | **已闭环（v1.2 token 鉴权）** |
+| ISSUE-039 | 未验证 a11y 注入手势的事件特征 | v1.3（EXP-01） |
+| ISSUE-040 | 服务未限定 `packageNames`，暴露全设备监视信号 | v1.3（P1） |
 
 ## 9. 风险声明
 

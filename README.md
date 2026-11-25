@@ -178,6 +178,7 @@ bash tools/deploy.sh          # 安装 + 启用无障碍 + 电池白名单 + 健
 bash tools/it.sh              # 集成测试（协议/回退/部署幂等/恢复）
 bash tools/it.sh --soak 120   # 额外 2 分钟 soak（RSS/fd）
 bash tools/a11y-compat.sh on # 微信等被门控应用：共启 Select to Speak（可 off 还原）
+bash tools/token.sh          # 驱动令牌（所有 /api/* 需 X-Vision-Token；服务端自动读取）
 ```
 
 ## 项目文档
@@ -204,5 +205,11 @@ bash tools/a11y-compat.sh on # 微信等被门控应用：共启 Select to Speak
 | [docs/v1.1/05-integration-test.md](docs/v1.1/05-integration-test.md) | v1.1 集成测试总结 |
 | [docs/07-wechat-a11y-options.md](docs/07-wechat-a11y-options.md) | 微信控件树门控：实验、方案对比（白名单/共启/OCR/通道） |
 | [docs/08-a11y-detection-surface.md](docs/08-a11y-detection-surface.md) | 合法辅助机制的可检测性：暴露字段、检测手段、降低暴露 |
+| [docs/v1.2/00-feasibility.md](docs/v1.2/00-feasibility.md) | v1.2 可行性：安全底座 + 门控诊断 |
+| [docs/v1.2/01-requirements.md](docs/v1.2/01-requirements.md) | v1.2 需求与接口契约 |
+| [docs/v1.2/02-plan.md](docs/v1.2/02-plan.md) | v1.2 计划与追溯矩阵 |
+| [docs/v1.2/03-stage-01-security.md](docs/v1.2/03-stage-01-security.md) | S1：token 鉴权 + capabilities |
+| [docs/v1.2/03-stage-02-gating.md](docs/v1.2/03-stage-02-gating.md) | S2：门控诊断 |
+| [docs/v1.2/05-integration-test.md](docs/v1.2/05-integration-test.md) | v1.2 集成测试总结 |
 | [docs/approach.md](docs/approach.md) | 可行性附件：协议依据、性能实测、事故复盘、路线对比 |
 | [docs/driver-selection.md](docs/driver-selection.md) | 选型附件：自研无障碍 App / app_process / GKD 的对比与工作量 |
