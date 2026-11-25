@@ -135,3 +135,7 @@ tools/a11y-compat.sh off      # 仅自研服务 → 1 节点
 **关掉 TalkBack 的影响**：TalkBack 主服务从未被启用；实验只用了 Select to Speak，没有常驻朗读风险。
 
 **关于"伪装"**：本机未安装 LSPosed/Xposed，无法做挂钩式伪装；但实测表明直接启用真实的 `SelectToSpeakService` 已达到同样效果，且可逆、无朗读副作用，因此不再需要伪装。
+
+## 8. 延伸
+
+合法机制本身的可检测性（微信能看到什么、怎么看到、如何降低暴露）见 [08-a11y-detection-surface.md](08-a11y-detection-surface.md)。

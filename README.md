@@ -203,5 +203,6 @@ bash tools/a11y-compat.sh on # 微信等被门控应用：共启 Select to Speak
 | [docs/v1.1/03-stage-03-integration.md](docs/v1.1/03-stage-03-integration.md) | S3：集成与真实任务复测 |
 | [docs/v1.1/05-integration-test.md](docs/v1.1/05-integration-test.md) | v1.1 集成测试总结 |
 | [docs/07-wechat-a11y-options.md](docs/07-wechat-a11y-options.md) | 微信控件树门控：实验、方案对比（白名单/共启/OCR/通道） |
+| [docs/08-a11y-detection-surface.md](docs/08-a11y-detection-surface.md) | 合法辅助机制的可检测性：暴露字段、检测手段、降低暴露 |
 | [docs/approach.md](docs/approach.md) | 可行性附件：协议依据、性能实测、事故复盘、路线对比 |
 | [docs/driver-selection.md](docs/driver-selection.md) | 选型附件：自研无障碍 App / app_process / GKD 的对比与工作量 |
