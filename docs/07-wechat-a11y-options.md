@@ -61,6 +61,21 @@ settings put secure enabled_accessibility_services \
 - 代价：多一个常驻服务；部分 ROM 可能有悬浮/扫描行为；微信若调整检测会失效；
 - **仍需注意**：这依然绕过了微信"不希望被自动化"的设计意图，账号风险由使用者承担。
 
+### 3.2.1 实测：Select to Speak（推荐用于兼容模式）
+
+用户资料提示应使用 `SelectToSpeakService` 而非 TalkBack 主服务，实测验证如下：
+
+| 项 | 结果 |
+| --- | --- |
+| 组件 | `com.google.android.marvin.talkback/com.google.android.accessibility.selecttospeak.SelectToSpeakService` |
+| 微信节点数 | **376**（与 TalkBack 一致） |
+| 常驻朗读 | **无**（logcat 未见 TTS；Select to Speak 只在用户主动激活时朗读） |
+| 悬浮按钮/遮挡 | 无（截图确认界面正常） |
+| 手势注入 | 正常（滑动往返均 `result=true`） |
+| 可逆 | `tools/a11y-compat.sh off` 一条命令，节点数回到 1 |
+
+> TalkBack 主服务 `TalkBackService` 会激活屏幕朗读，**不要用它**做兼容模式。
+
 ### 3.3 关于 OCR + 视觉点击
 
 - 我们的截图和手势在微信里完全可用，这条链路**一定能跑通**；
@@ -86,7 +101,7 @@ settings put secure enabled_accessibility_services \
 | --- | --- | --- |
 | L0 诊断 | 抓帧后若 `nodeCount ≤ 2` 且不是白屏，判定"树被门控" | 每次任务开始 |
 | L1 主路径 | a11y 选择器/坐标（现有能力） | 有树 |
-| L2 兼容模式 | 提示用户一键共启静默辅助服务（Switch Access），可一键还原 | L0 判定门控 |
+| L2 兼容模式 | 一键共启 **Select to Speak**（静默、无朗读），可一键还原：`tools/a11y-compat.sh on|off|status` | L0 判定门控 |
 | L3 兜底 | 模板匹配（已有）+ OCR（v1.2） | 无树或兼容模式不可用 |
 | L4 专用通道 | Intent/IME/通知回复 | 已知场景 |
 
@@ -106,3 +121,17 @@ settings put secure enabled_accessibility_services \
 - 共启辅助服务虽属合法配置，但用于自动化微信仍可能违反其用户协议，存在账号风险；
 - 本文只做技术验证与记录，不提供伪装/挂钩实现；
 - 实验中临时启用的 TalkBack/Switch Access **已还原**，当前仅保留自研服务（`nodeCount=1` 已复验）。
+
+## 7. 兼容开关（已实现）
+
+```bash
+tools/a11y-compat.sh status   # 当前服务 + 微信可见节点数
+tools/a11y-compat.sh on       # 自研服务 + Select to Speak → 376 节点
+tools/a11y-compat.sh off      # 仅自研服务 → 1 节点
+```
+
+脚本会保留系统里已有的其它无障碍服务，只增删自己的两个组件，并通过"清空再写回"强制重绑。
+
+**关掉 TalkBack 的影响**：TalkBack 主服务从未被启用；实验只用了 Select to Speak，没有常驻朗读风险。
+
+**关于"伪装"**：本机未安装 LSPosed/Xposed，无法做挂钩式伪装；但实测表明直接启用真实的 `SelectToSpeakService` 已达到同样效果，且可逆、无朗读副作用，因此不再需要伪装。

@@ -177,6 +177,7 @@ Android 驱动源码在 `driver/`（`driver-core` AAR + `driver-app` APK），�
 bash tools/deploy.sh          # 安装 + 启用无障碍 + 电池白名单 + 健康检查（幂等）
 bash tools/it.sh              # 集成测试（协议/回退/部署幂等/恢复）
 bash tools/it.sh --soak 120   # 额外 2 分钟 soak（RSS/fd）
+bash tools/a11y-compat.sh on # 微信等被门控应用：共启 Select to Speak（可 off 还原）
 ```
 
 ## 项目文档
