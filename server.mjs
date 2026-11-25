@@ -54,6 +54,30 @@ function makeRoot() {
   });
 }
 
+async function reachableA11y() {
+  try {
+    const response = await fetch(`${A11Y}/api/ping`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(1500),
+    });
+    if (response.ok) return true;
+  } catch {
+    /* ignore */
+  }
+  try {
+    const token = await readDriverToken();
+    const response = await fetch(`${A11Y}/api/state`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(token ? { 'x-vision-token': token } : {}) },
+      body: '{}',
+      signal: AbortSignal.timeout(1500),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function reachable(url) {
   try {
     const response = await fetch(`${url}/api/state`, {
@@ -68,6 +92,31 @@ async function reachable(url) {
   }
 }
 
+let cachedDriverToken = null;
+async function readDriverToken() {
+  const explicit = args.get('token');
+  if (explicit === 'off') return null;
+  if (explicit) return explicit;
+  if (process.env.VISION_TOKEN) return process.env.VISION_TOKEN;
+  try {
+    const token = await new Promise((resolve) => {
+      execFile(
+        'su',
+        ['-c', 'cat /data/data/dev.everything.vision/files/vision.token'],
+        { timeout: 3000 },
+        (error, stdout) => resolve(error ? null : String(stdout).trim() || null),
+      );
+    });
+    if (token) {
+      cachedDriverToken = token;
+      return token;
+    }
+  } catch {
+    /* fall through */
+  }
+  return cachedDriverToken;
+}
+
 async function hasRoot() {
   return new Promise((resolve) => {
     execFile('su', ['-c', 'id'], { timeout: 3000 }, (error, stdout) => {
@@ -79,12 +128,12 @@ async function hasRoot() {
 async function pickDevice() {
   if (DRIVER === 'mock') return new MockGkd();
   if (DRIVER === 'root') return makeRoot();
-  if (DRIVER === 'a11y') return new GkdClient(A11Y);
+  if (DRIVER === 'a11y') return new GkdClient(A11Y, { tokenProvider: readDriverToken });
   if (DRIVER === 'gkd') return new GkdClient(GKD);
   // auto: a11y → root → gkd
-  if (await reachable(A11Y)) {
+  if (await reachableA11y()) {
     console.log(`[driver] auto → a11y (${A11Y})`);
-    return new GkdClient(A11Y);
+    return new GkdClient(A11Y, { tokenProvider: readDriverToken });
   }
   if (await hasRoot()) {
     console.log('[driver] auto → root');

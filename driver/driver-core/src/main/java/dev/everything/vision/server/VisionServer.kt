@@ -22,6 +22,7 @@ import org.json.JSONObject
 class VisionServer(
     private val service: A11yService,
     private val port: Int = DEFAULT_PORT,
+    private val token: String = TokenStore.ensure(service),
 ) {
     private val builder = SnapshotBuilder()
     private val actions = ActionExecutor(service)
@@ -109,19 +110,66 @@ class VisionServer(
         }
     }
 
-    private fun route(request: HttpRequest): HttpResponse = when (request.path) {
-        "/api/state" -> json(stateJson())
-        "/api/getServerInfo" -> json(serverInfoJson())
-        "/api/captureSnapshot" -> json(captureSnapshot())
-        "/api/getScreenshot" -> screenshotResponse(request.body)
-        "/api/execSelector" -> json(actions.exec(parseBody(request.body)))
-        "/api/text" -> json(actions.setText(parseBody(request.body)))
-        "/api/deleteSnapshot" -> json(JSONObject().put("message", "success"))
-        "/api/getSnapshots" -> HttpResponse(body = org.json.JSONArray().toString().toByteArray(Charsets.UTF_8))
-        else -> HttpResponse(
-            status = 404,
-            body = errorBody("NOT_FOUND", "unknown path ${request.path}"),
-            rpcStatus = "error",
+    private fun route(request: HttpRequest): HttpResponse {
+        if (request.path == "/api/ping") return json(JSONObject().put("ok", true))
+        if (request.headers["x-vision-token"] != token) {
+            return HttpResponse(
+                status = 401,
+                body = errorBody("UNAUTHORIZED", "缺少或错误的 X-Vision-Token"),
+                rpcStatus = "error",
+            )
+        }
+        if (request.method == "POST" && request.body.isNotEmpty()) {
+            val type = request.headers["content-type"]?.lowercase().orEmpty()
+            if (!type.startsWith("application/json")) {
+                return HttpResponse(
+                    status = 400,
+                    body = errorBody("INVALID_CONTENT_TYPE", "需要 application/json，实际: ${type.ifBlank { "none" }}"),
+                    rpcStatus = "error",
+                )
+            }
+        }
+        return when (request.path) {
+            "/api/state" -> json(stateJson())
+            "/api/getServerInfo" -> json(serverInfoJson())
+            "/api/capabilities" -> json(capabilitiesJson())
+            "/api/captureSnapshot" -> json(captureSnapshot())
+            "/api/getScreenshot" -> screenshotResponse(request.body)
+            "/api/execSelector" -> json(actions.exec(parseBody(request.body)))
+            "/api/text" -> json(actions.setText(parseBody(request.body)))
+            "/api/deleteSnapshot" -> json(JSONObject().put("message", "success"))
+            "/api/getSnapshots" -> HttpResponse(body = org.json.JSONArray().toString().toByteArray(Charsets.UTF_8))
+            else -> HttpResponse(
+                status = 404,
+                body = errorBody("NOT_FOUND", "unknown path ${request.path}"),
+                rpcStatus = "error",
+            )
+        }
+    }
+
+    private fun capabilitiesJson(): JSONObject = JSONObject().apply {
+        put("name", "vision-driver")
+        put("version", Env.selfApp(service).versionName)
+        put("tokenRequired", true)
+        put("actions", org.json.JSONArray(listOf("click", "clickCenter", "clickNode", "longClick", "longClickCenter", "longClickNode", "swipe", "back", "none", "setText")))
+        put("selectorProps", org.json.JSONArray(listOf("text", "desc", "vid", "viewId", "clickable", "editable")))
+        put("limits", JSONObject().put("maxNodes", 4096).put("maxDepth", 64).put("maxChildren", 512))
+        put(
+            "capabilities",
+            JSONObject()
+                .put("canRetrieveWindowContent", true)
+                .put("canPerformGestures", true)
+                .put("canTakeScreenshot", true),
+        )
+        put(
+            "endpoints",
+            org.json.JSONArray(
+                listOf(
+                    "/api/ping", "/api/capabilities", "/api/state", "/api/getServerInfo",
+                    "/api/captureSnapshot", "/api/getScreenshot", "/api/execSelector",
+                    "/api/text", "/api/getSnapshots", "/api/deleteSnapshot",
+                ),
+            ),
         )
     }
 
@@ -136,6 +184,7 @@ class VisionServer(
         put("lastPackage", service.lastPackage ?: JSONObject.NULL)
         put("lastClass", service.lastClass ?: JSONObject.NULL)
         put("imeVisible", service.isImeVisible())
+        put("tokenRequired", true)
     }
 
     private fun serverInfoJson(): JSONObject = JSONObject().apply {

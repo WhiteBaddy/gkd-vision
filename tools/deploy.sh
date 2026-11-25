@@ -21,13 +21,25 @@ su -c "settings put secure enabled_accessibility_services $SERVICE"
 su -c "settings put secure accessibility_enabled 1"
 su -c "dumpsys deviceidle whitelist +$PKG" >/dev/null 2>&1 || true
 
-for _ in $(seq 1 20); do
-  if curl -s -m 2 -XPOST "http://127.0.0.1:$PORT/api/state" | grep -q '"status":"ok"'; then
-    echo "OK: $PKG ready on 127.0.0.1:$PORT"
-    exit 0
+TOKEN=""
+for _ in $(seq 1 25); do
+  TOKEN=$(su -c "cat /data/data/$PKG/files/vision.token 2>/dev/null" | tr -d '\r\n')
+  if [ -n "$TOKEN" ] && curl -s -m 2 -XPOST "http://127.0.0.1:$PORT/api/ping" | grep -q '"ok":true'; then
+    break
   fi
   sleep 1
 done
 
-echo "FAIL: 服务未就绪，检查无障碍授权或端口占用" >&2
+if [ -z "$TOKEN" ]; then
+  echo "FAIL: 令牌未生成，检查无障碍服务是否已绑定" >&2
+  exit 1
+fi
+
+if curl -s -m 3 -XPOST -H "X-Vision-Token: $TOKEN" -H 'Content-Type: application/json' \
+  "http://127.0.0.1:$PORT/api/state" | grep -q '"status":"ok"'; then
+  echo "OK: $PKG ready on 127.0.0.1:$PORT (token auth on)"
+  exit 0
+fi
+
+echo "FAIL: 鉴权后健康检查失败，检查 TokenStore 或服务日志" >&2
 exit 1
