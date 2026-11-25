@@ -11,6 +11,7 @@ import { Vision } from './src/vision.mjs';
 import { buildFingerprint, findTextNodes } from './src/fingerprint.mjs';
 import { waitFor } from './src/asserts.mjs';
 import { toGray, toGrayFromImage, matchTemplate, dHash, SCALE_WIDTH } from './src/vision-match.mjs';
+import { diagnoseGating, gatingHint } from './src/gating.mjs';
 import { attachWebSocket } from './src/ws.mjs';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
@@ -280,6 +281,7 @@ const server = createServer(async (req, res) => {
         device: DRIVER === 'gkd' ? GKD : DRIVER === 'a11y' ? A11Y : DRIVER,
         state: vision.state,
         fingerprint: vision.frame ? buildFingerprint(vision.frame) : null,
+        gating: vision.frame ? diagnoseGating(vision.frame) : null,
         warnings: device.warnings ?? [],
       });
     }
@@ -409,10 +411,22 @@ const server = createServer(async (req, res) => {
       if (action === 'fingerprint') {
         const frame = await frameForVisual(body.fresh === true);
         const fingerprint = buildFingerprint(frame);
+        fingerprint.gating = diagnoseGating(frame);
         if (body.visual && frame.image?.length) {
           fingerprint.visualHash = await dHash(frame.image);
         }
         return json(res, 200, fingerprint);
+      }
+      if (action === 'diagnose') {
+        const frame = await frameForVisual(body.fresh === true);
+        const gating = diagnoseGating(frame);
+        return json(res, 200, {
+          package: gating.package ?? null,
+          gating,
+          hint: gatingHint(gating),
+          fingerprint: buildFingerprint(frame),
+          compat: { command: 'tools/a11y-compat.sh on', revert: 'tools/a11y-compat.sh off' },
+        });
       }
       if (action === 'act') {
         const beforeFrame = await vision.captureOnce();
