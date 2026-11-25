@@ -123,3 +123,21 @@ Bound services:
 | 包安装可见 | 能（有限） | 修改包名/重打包 | 破坏签名与升级链，不建议 |
 
 **建议顺序**：先做端口鉴权与按需启停（纯安全收益），再评估是否需要 packageNames 限定；不伪造 `isAccessibilityTool`；root 隐藏属于设备配置，交给使用者决定。
+
+## 12. 本机 root 隐藏现状（2026-11-25 复验）
+
+> 更正：此前记录"未安装 LSPosed"有误——它以 Zygisk 模块形式存在，管理器包名不可见。
+
+| 项 | 现状 | 判定 |
+| --- | --- | --- |
+| Root 方案 | KernelSU `v3.2.5` | 已 root |
+| KernelSU 管理器包 | `me.weishu.kernelsu` 可见 | ❌ 未隐藏 |
+| LSPosed | `zygisk_lsposed` v2.1.1（Zygisk 模块） | ✅ 已装；管理器包不可见（已隐藏） |
+| Play Integrity | `playintegrityfix` v16 | ✅ 已装（面向 Play，不针对微信） |
+| Shamiko / SUSFS | 未发现 | ❌ 未启用 |
+| 微信的 App Profile（umount） | `/data/adb/ksu/profile` 只有模板，无微信条目 | ❌ 未配置 |
+| 微信是否在 su 允许列表 | `.allowlist` 中无 tencent | ✅ 微信拿不到 su |
+| `/system/bin/su` | 存在且可执行 | ❌ 可被探测 |
+| SELinux | Enforcing | 正常 |
+
+**结论**：目前是"部分隐藏"（LSPosed 管理器已藏、Play Integrity 已修），但没有针对微信做任何隐藏；驱动 APK 本身与 root 无关（普通应用 uid）。
