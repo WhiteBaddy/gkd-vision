@@ -1,6 +1,6 @@
 {
   "name": "gkd-vision",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "description": "Real-time see & control bridge for the GKD on-device HTTP inspection server (protocol of gkd-kit/inspect)",

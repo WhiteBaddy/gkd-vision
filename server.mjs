@@ -94,11 +94,12 @@ async function reachable(url) {
 }
 
 let cachedDriverToken = null;
-async function readDriverToken() {
+async function readDriverToken(force = false) {
   const explicit = args.get('token');
   if (explicit === 'off') return null;
   if (explicit) return explicit;
   if (process.env.VISION_TOKEN) return process.env.VISION_TOKEN;
+  if (!force && cachedDriverToken) return cachedDriverToken;
   try {
     const token = await new Promise((resolve) => {
       execFile(
@@ -129,12 +130,12 @@ async function hasRoot() {
 async function pickDevice() {
   if (DRIVER === 'mock') return new MockGkd();
   if (DRIVER === 'root') return makeRoot();
-  if (DRIVER === 'a11y') return new GkdClient(A11Y, { tokenProvider: readDriverToken });
+  if (DRIVER === 'a11y') return new GkdClient(A11Y, { tokenProvider: () => readDriverToken(true) });
   if (DRIVER === 'gkd') return new GkdClient(GKD);
   // auto: a11y → root → gkd
   if (await reachableA11y()) {
     console.log(`[driver] auto → a11y (${A11Y})`);
-    return new GkdClient(A11Y, { tokenProvider: readDriverToken });
+    return new GkdClient(A11Y, { tokenProvider: () => readDriverToken(true) });
   }
   if (await hasRoot()) {
     console.log('[driver] auto → root');
