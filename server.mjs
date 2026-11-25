@@ -8,6 +8,9 @@ import { GkdClient } from './src/gkd.mjs';
 import { MockGkd } from './src/mock.mjs';
 import { RootDriver } from './src/root.mjs';
 import { Vision } from './src/vision.mjs';
+import { buildFingerprint, findTextNodes } from './src/fingerprint.mjs';
+import { waitFor } from './src/asserts.mjs';
+import { toGray, toGrayFromImage, matchTemplate, dHash, SCALE_WIDTH } from './src/vision-match.mjs';
 import { attachWebSocket } from './src/ws.mjs';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
@@ -227,6 +230,7 @@ const server = createServer(async (req, res) => {
         driver: DRIVER,
         device: DRIVER === 'gkd' ? GKD : DRIVER === 'a11y' ? A11Y : DRIVER,
         state: vision.state,
+        fingerprint: vision.frame ? buildFingerprint(vision.frame) : null,
         warnings: device.warnings ?? [],
       });
     }
@@ -245,7 +249,8 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && path === '/api/tree') {
-      const frame = vision.frame;
+      let frame = vision.frame;
+      if (!frame || url.searchParams.get('fresh') === '1') frame = await vision.captureOnce();
       if (!frame) return json(res, 404, { error: '暂无画面' });
       return json(res, 200, { seq: frame.seq, appId: frame.appId, nodes: frame.nodes });
     }
@@ -288,6 +293,12 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
       return res.end(renderTextTree(frame.nodes));
     }
+
+    const frameForVisual = async (fresh = false) => {
+      const current = vision.frame;
+      if (!fresh && current && Date.now() - current.at < 1200) return current;
+      return vision.captureOnce();
+    };
 
     if (req.method === 'POST' && path.startsWith('/api/')) {
       const body = await readBody(req);
@@ -345,6 +356,136 @@ const server = createServer(async (req, res) => {
       if (action === 'config') {
         vision.configure(body);
         return json(res, 200, { config: vision.config });
+      }
+      if (action === 'fingerprint') {
+        const frame = await frameForVisual(body.fresh === true);
+        const fingerprint = buildFingerprint(frame);
+        if (body.visual && frame.image?.length) {
+          fingerprint.visualHash = await dHash(frame.image);
+        }
+        return json(res, 200, fingerprint);
+      }
+      if (action === 'act') {
+        const beforeFrame = await vision.captureOnce();
+        const before = { frame: beforeFrame, fingerprint: buildFingerprint(beforeFrame), image: beforeFrame.image };
+        if (body.expectPackage && before.fingerprint.package !== body.expectPackage) {
+          return json(res, 409, {
+            ok: false,
+            code: 'PAGE_MISMATCH',
+            message: `期望页面 ${body.expectPackage}，当前 ${before.fingerprint.package}`,
+            fingerprint: before.fingerprint,
+          });
+        }
+        const result = await vision.exec(body.payload ?? {});
+        if (!body.expect) {
+          return json(res, 200, { ok: true, verified: null, result, fingerprintBefore: before.fingerprint });
+        }
+        const waited = await waitFor(vision, body.expect, {
+          timeoutMs: Number(body.timeoutMs ?? 1500),
+          before,
+        });
+        const after = buildFingerprint(waited.frame);
+        return json(res, 200, {
+          ok: waited.ok,
+          verified: waited.ok,
+          elapsedMs: waited.elapsedMs,
+          attempts: waited.attempts,
+          result,
+          fingerprintBefore: before.fingerprint,
+          fingerprintAfter: after,
+          details: waited.details,
+        });
+      }
+      if (action === 'wait') {
+        const frame = await vision.captureOnce();
+        const before = { frame, fingerprint: buildFingerprint(frame), image: frame.image };
+        const waited = await waitFor(vision, body.expect ?? {}, { timeoutMs: Number(body.timeoutMs ?? 1500), before });
+        return json(res, 200, {
+          ok: waited.ok,
+          elapsedMs: waited.elapsedMs,
+          attempts: waited.attempts,
+          fingerprint: buildFingerprint(waited.frame),
+          details: waited.details,
+        });
+      }
+      if (action === 'tapText') {
+        const frame = vision.frame ?? (await vision.captureOnce());
+        const exactNodes = findTextNodes(frame.nodes, body.text, { exact: true });
+        const loose = findTextNodes(frame.nodes, body.text, { exact: false });
+        const nodes = (body.exact ? exactNodes : exactNodes.length ? exactNodes : loose).sort(
+          (a, b) => (b.right - b.left) * (b.bottom - b.top) - (a.right - a.left) * (a.bottom - a.top),
+        );
+        if (!nodes.length) {
+          return json(res, 404, { ok: false, code: 'NODE_NOT_FOUND', message: `未找到文本: ${body.text}` });
+        }
+        const node = nodes[0];
+        const selector = `[text="${String(node.text).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"]`;
+        try {
+          const result = await vision.exec({ selector, action: 'click' });
+          return json(res, 200, { ok: result?.result !== false, point: { x: Math.round((node.left + node.right) / 2), y: Math.round((node.top + node.bottom) / 2) }, selector, result });
+        } catch {
+          const point = { x: Math.round((node.left + node.right) / 2), y: Math.round((node.top + node.bottom) / 2) };
+          const result = await vision.tap(point.x, point.y);
+          return json(res, result.ok ? 200 : 502, { ok: result.ok, point, selector: null, result });
+        }
+      }
+      if (action === 'find') {
+        const started = Date.now();
+        const frame = await frameForVisual(body.fresh === true);
+        const scale = SCALE_WIDTH / (frame.screenWidth || 1200);
+        const screen = await toGray(frame.image, SCALE_WIDTH);
+        let tpl;
+        if (body.region) {
+          const region = body.region;
+          const w = Math.max(4, Math.round(Number(region.w) * scale));
+          tpl = await toGray(frame.image, w, {
+            x: Math.round(Number(region.x)),
+            y: Math.round(Number(region.y)),
+            w: Math.round(Number(region.w)),
+            h: Math.round(Number(region.h)),
+          });
+        } else if (body.templateBase64) {
+          const fullWidth = Math.max(4, Number(body.templateWidth ?? 100));
+          tpl = await toGrayFromImage(Buffer.from(String(body.templateBase64), 'base64'), Math.max(4, Math.round(fullWidth * scale)));
+        } else {
+          return json(res, 400, { ok: false, code: 'TEMPLATE_INVALID', message: '需要 region 或 templateBase64' });
+        }
+        const m = matchTemplate(screen, tpl, { threshold: Number(body.threshold ?? 0.9) });
+        return json(res, 200, {
+          found: m.found,
+          x: m.x != null ? Math.round(m.x / scale) : null,
+          y: m.y != null ? Math.round(m.y / scale) : null,
+          score: Number((m.score ?? 0).toFixed(4)),
+          reason: m.reason ?? null,
+          template: { width: tpl.width, height: tpl.height },
+          elapsedMs: Date.now() - started,
+        });
+      }
+      if (action === 'tapImage') {
+        const frame = await frameForVisual(body.fresh === true);
+        const scale = SCALE_WIDTH / (frame.screenWidth || 1200);
+        const screen = await toGray(frame.image, SCALE_WIDTH);
+        let tpl;
+        if (body.region) {
+          const region = body.region;
+          tpl = await toGray(frame.image, Math.max(4, Math.round(Number(region.w) * scale)), {
+            x: Math.round(Number(region.x)),
+            y: Math.round(Number(region.y)),
+            w: Math.round(Number(region.w)),
+            h: Math.round(Number(region.h)),
+          });
+        } else if (body.templateBase64) {
+          tpl = await toGrayFromImage(Buffer.from(String(body.templateBase64), 'base64'), Math.max(4, Math.round(Number(body.templateWidth ?? 100) * scale)));
+        } else {
+          return json(res, 400, { ok: false, code: 'TEMPLATE_INVALID', message: '需要 region 或 templateBase64' });
+        }
+        const m = matchTemplate(screen, tpl, { threshold: Number(body.threshold ?? 0.9) });
+        if (!m.found) {
+          return json(res, 404, { ok: false, code: 'TEMPLATE_NOT_FOUND', message: '未找到模板', score: m.score, fingerprint: buildFingerprint(frame) });
+        }
+        const point = { x: Math.round(m.x / scale), y: Math.round(m.y / scale) };
+        const tapped = await vision.tap(point.x, point.y);
+        return json(res, tapped.ok ? 200 : 502, { ok: tapped.ok, point, score: Number(m.score.toFixed(4)), result: tapped });
       }
       if (action === 'capture') {
         const frame = await vision.captureOnce();
