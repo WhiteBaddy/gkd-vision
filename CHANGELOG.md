@@ -1,3 +1,26 @@
+## v1.2.0 (2026-11-25)
+
+### 安全
+
+- **驱动 HTTP 强制 token 鉴权**：首次启动生成 32 位令牌写入应用私有目录（0600），所有 `/api/*` 需 `X-Vision-Token`，否则 401；`/api/ping` 免鉴权。
+- 非 `application/json` 的 POST 返回 400，阻断浏览器简单请求。
+- 服务端自动读取令牌（`su cat`），401 时强制重读并重试一次；`tools/token.sh` 统一读取。
+
+### 新增
+
+- `POST /api/capabilities`：版本、动作、选择器属性、限制、能力位、端点清单。
+- 门控诊断：`/api/state` 与 `/api/fingerprint` 增加 `gating`；`POST /api/diagnose` 给出兼容建议。
+- 微信场景：兼容关闭 `gated=true`（1 节点），开启后 `gated=false`（376 节点）。
+
+### 工具
+
+- `tools/deploy.sh` 自动取令牌并通过鉴权健康检查；`tools/it.sh` 全量带令牌。
+- 单测增至 21 条断言（指纹 9 / 匹配 6 / 门控 6）。
+
+### CI
+
+- 支持 `feature/**` 分支构建；加入阿里云 Maven 镜像规避 429。
+
 # Changelog
 
 ## v1.1.0 (2026-11-25)

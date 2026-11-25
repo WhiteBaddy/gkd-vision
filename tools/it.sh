@@ -8,6 +8,9 @@ PKG=dev.everything.vision
 SERVICE="$PKG/$PKG.A11yService"
 BASE="http://127.0.0.1:$PORT"
 TMP=${TMPDIR:-${PREFIX:-/data/data/com.termux/files/usr}/tmp}
+TOKEN=$(su -c "cat /data/data/dev.everything.vision/files/vision.token 2>/dev/null" | tr -d '\r\n')
+if [ -z "$TOKEN" ]; then echo "FAIL: 驱动令牌不可读"; exit 1; fi
+H=(-H "X-Vision-Token: $TOKEN" -H "Content-Type: application/json")
 mkdir -p "$TMP"
 PASS=0
 FAIL=0
@@ -16,17 +19,17 @@ ok()   { PASS=$((PASS+1)); echo "PASS  $1"; }
 bad()  { FAIL=$((FAIL+1)); echo "FAIL  $1"; }
 need() { command -v "$1" >/dev/null 2>&1; }
 
-state_field() { curl -s -m 5 -XPOST "$BASE/api/state" | python3 -c "import json,sys; print(json.load(sys.stdin).get('$1',''))" 2>/dev/null; }
+state_field() { curl -s -m 5 "${H[@]}" -XPOST "$BASE/api/state" | python3 -c "import json,sys; print(json.load(sys.stdin).get('$1',''))" 2>/dev/null; }
 
 echo "== TC-12 协议形状 =="
 [ "$(state_field status)" = "ok" ] && ok "state.status=ok" || bad "state.status"
-curl -s -m 15 -XPOST "$BASE/api/captureSnapshot" -o "$TMP/snap.json" 2>/dev/null || true
+curl -s -m 15 "${H[@]}" -XPOST "$BASE/api/captureSnapshot" -o "$TMP/snap.json" 2>/dev/null || true
 N=$(python3 -c "import json;print(len(json.load(open('$TMP/snap.json')).get('nodes',[])))" 2>/dev/null || echo 0)
 [ "$N" -gt 10 ] && ok "captureSnapshot nodes=$N" || bad "captureSnapshot nodes=$N"
 ID=$(python3 -c "import json;print(json.load(open('$TMP/snap.json'))['id'])" 2>/dev/null || echo 0)
-CODE=$(curl -s -m 10 -XPOST "$BASE/api/getScreenshot" -d "{\"id\":$ID}" -o "$TMP/shot.webp" -w '%{http_code}')
+CODE=$(curl -s -m 10 "${H[@]}" -XPOST "$BASE/api/getScreenshot" -d "{\"id\":$ID}" -o "$TMP/shot.webp" -w '%{http_code}')
 [ "$CODE" = "200" ] && ok "getScreenshot 200" || bad "getScreenshot $CODE"
-HDR=$(curl -s -m 5 -XPOST "$BASE/api/execSelector" -d 'not-json' -D- -o /dev/null | grep -ci "GKD-RPC-Status: error")
+HDR=$(curl -s -m 5 "${H[@]}" -XPOST "$BASE/api/execSelector" -d 'not-json' -D- -o /dev/null | grep -ci "GKD-RPC-Status: error")
 [ "$HDR" = "1" ] && ok "错误头" || bad "错误头"
 [ "$(head -c 4 "$TMP/shot.webp")" = "RIFF" ] && ok "截图是 WebP" || bad "截图格式"
 
@@ -47,12 +50,12 @@ if bash tools/deploy.sh >"$TMP/deploy.log" 2>&1; then ok "deploy.sh 第二次执
 echo "== TC-17 掉线恢复 =="
 su -c "am force-stop $PKG" 2>/dev/null
 sleep 8
-if curl -s -m 3 -XPOST "$BASE/api/state" | grep -q '"status":"ok"'; then
+if curl -s -m 3 "${H[@]}" -XPOST "$BASE/api/state" | grep -q '"status":"ok"'; then
   ok "force-stop 后服务自动恢复"
 else
   su -c "settings put secure enabled_accessibility_services '$SERVICE'" 2>/dev/null
   sleep 5
-  if curl -s -m 3 -XPOST "$BASE/api/state" | grep -q '"status":"ok"'; then
+  if curl -s -m 3 "${H[@]}" -XPOST "$BASE/api/state" | grep -q '"status":"ok"'; then
     ok "force-stop 后需重设服务才恢复（已恢复）"
   else
     bad "force-stop 后未恢复"

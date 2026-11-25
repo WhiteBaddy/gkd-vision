@@ -11,6 +11,7 @@ import { Vision } from './src/vision.mjs';
 import { buildFingerprint, findTextNodes } from './src/fingerprint.mjs';
 import { waitFor } from './src/asserts.mjs';
 import { toGray, toGrayFromImage, matchTemplate, dHash, SCALE_WIDTH } from './src/vision-match.mjs';
+import { diagnoseGating, gatingHint } from './src/gating.mjs';
 import { attachWebSocket } from './src/ws.mjs';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
@@ -54,6 +55,30 @@ function makeRoot() {
   });
 }
 
+async function reachableA11y() {
+  try {
+    const response = await fetch(`${A11Y}/api/ping`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(1500),
+    });
+    if (response.ok) return true;
+  } catch {
+    /* ignore */
+  }
+  try {
+    const token = await readDriverToken();
+    const response = await fetch(`${A11Y}/api/state`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(token ? { 'x-vision-token': token } : {}) },
+      body: '{}',
+      signal: AbortSignal.timeout(1500),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function reachable(url) {
   try {
     const response = await fetch(`${url}/api/state`, {
@@ -68,6 +93,32 @@ async function reachable(url) {
   }
 }
 
+let cachedDriverToken = null;
+async function readDriverToken(force = false) {
+  const explicit = args.get('token');
+  if (explicit === 'off') return null;
+  if (explicit) return explicit;
+  if (process.env.VISION_TOKEN) return process.env.VISION_TOKEN;
+  if (!force && cachedDriverToken) return cachedDriverToken;
+  try {
+    const token = await new Promise((resolve) => {
+      execFile(
+        'su',
+        ['-c', 'cat /data/data/dev.everything.vision/files/vision.token'],
+        { timeout: 3000 },
+        (error, stdout) => resolve(error ? null : String(stdout).trim() || null),
+      );
+    });
+    if (token) {
+      cachedDriverToken = token;
+      return token;
+    }
+  } catch {
+    /* fall through */
+  }
+  return cachedDriverToken;
+}
+
 async function hasRoot() {
   return new Promise((resolve) => {
     execFile('su', ['-c', 'id'], { timeout: 3000 }, (error, stdout) => {
@@ -79,12 +130,12 @@ async function hasRoot() {
 async function pickDevice() {
   if (DRIVER === 'mock') return new MockGkd();
   if (DRIVER === 'root') return makeRoot();
-  if (DRIVER === 'a11y') return new GkdClient(A11Y);
+  if (DRIVER === 'a11y') return new GkdClient(A11Y, { tokenProvider: () => readDriverToken(true) });
   if (DRIVER === 'gkd') return new GkdClient(GKD);
   // auto: a11y → root → gkd
-  if (await reachable(A11Y)) {
+  if (await reachableA11y()) {
     console.log(`[driver] auto → a11y (${A11Y})`);
-    return new GkdClient(A11Y);
+    return new GkdClient(A11Y, { tokenProvider: () => readDriverToken(true) });
   }
   if (await hasRoot()) {
     console.log('[driver] auto → root');
@@ -231,6 +282,7 @@ const server = createServer(async (req, res) => {
         device: DRIVER === 'gkd' ? GKD : DRIVER === 'a11y' ? A11Y : DRIVER,
         state: vision.state,
         fingerprint: vision.frame ? buildFingerprint(vision.frame) : null,
+        gating: vision.frame ? diagnoseGating(vision.frame) : null,
         warnings: device.warnings ?? [],
       });
     }
@@ -360,10 +412,22 @@ const server = createServer(async (req, res) => {
       if (action === 'fingerprint') {
         const frame = await frameForVisual(body.fresh === true);
         const fingerprint = buildFingerprint(frame);
+        fingerprint.gating = diagnoseGating(frame);
         if (body.visual && frame.image?.length) {
           fingerprint.visualHash = await dHash(frame.image);
         }
         return json(res, 200, fingerprint);
+      }
+      if (action === 'diagnose') {
+        const frame = await frameForVisual(body.fresh === true);
+        const gating = diagnoseGating(frame);
+        return json(res, 200, {
+          package: gating.package ?? null,
+          gating,
+          hint: gatingHint(gating),
+          fingerprint: buildFingerprint(frame),
+          compat: { command: 'tools/a11y-compat.sh on', revert: 'tools/a11y-compat.sh off' },
+        });
       }
       if (action === 'act') {
         const beforeFrame = await vision.captureOnce();

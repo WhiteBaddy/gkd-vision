@@ -83,3 +83,16 @@ assert.equal(tooLarge.reason, 'template-too-large');
 
 console.log('PASS fingerprint: 9 assertions');
 console.log('PASS match: 6 assertions (hit/miss/flat/large)');
+
+/* ---------------- gating ---------------- */
+import { diagnoseGating, gatingHint } from '../src/gating.mjs';
+
+const mkFrame = (pkg, count) => ({ appId: pkg, nodes: Array.from({ length: count }, (_, i) => ({ text: `t${i}` })) });
+
+assert.equal(diagnoseGating(mkFrame('com.tencent.mm', 1)).gated, true, '微信 1 节点应判为门控');
+assert.equal(diagnoseGating(mkFrame('com.tencent.mm', 376)).gated, false, '376 节点不应判门控');
+assert.equal(diagnoseGating(mkFrame('com.android.systemui', 1)).gated, false, '系统界面不判门控');
+assert.equal(diagnoseGating({ appId: '', nodes: [] }).reason, 'no-frame');
+assert.equal(gatingHint({ gated: true }).action, 'tools/a11y-compat.sh on');
+assert.equal(gatingHint({ gated: false }), null);
+console.log('PASS gating: 6 assertions');
