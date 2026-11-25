@@ -193,5 +193,6 @@ bash tools/it.sh --soak 120   # 额外 2 分钟 soak（RSS/fd）
 | [docs/03-stage-02-control.md](docs/03-stage-02-control.md) | S2 开发文档：手势/选择器/文本/部署 |
 | [docs/03-stage-03-integration.md](docs/03-stage-03-integration.md) | S3 开发文档：接入/回退/保活/soak |
 | [docs/05-integration-test.md](docs/05-integration-test.md) | 集成测试总结（v1.0.0-rc） |
+| [docs/06-scenario-analysis.md](docs/06-scenario-analysis.md) | 真实场景表现分析：微信/ B 站失败模式与 v1.1 改进项 |
 | [docs/approach.md](docs/approach.md) | 可行性附件：协议依据、性能实测、事故复盘、路线对比 |
 | [docs/driver-selection.md](docs/driver-selection.md) | 选型附件：自研无障碍 App / app_process / GKD 的对比与工作量 |
